@@ -48,7 +48,8 @@ def createFan(G, n, spread=120, r=50, dhsv=0.05):
         G.node[s[0]]['y'] = s[1][1]
         G.node[s[0]]['angle'] = s[1][2] 
         # Set color and size
-        color = rgb_to_hsv(G.node[n]['color'][0], G.node[n]['color'][1], G.node[n]['color'][2])[0] + dhsv #hes just like his father (kinda)!
+        color = rgb_to_hsv(G.node[n]['color'][0], G.node[n]['color'][1], G.node[n]['color'][2])[0] + dhsv
+        #hes just like his father (kinda)!
         G.node[s[0]]['color'] = hsv_to_rgb(color,1,1)
         log.info("color={}".format( G.node[s[0]]['color'] ))
         G.node[s[0]]['size'] = 1 #small is pretty, we'll color edges later
@@ -64,8 +65,6 @@ def createFan(G, n, spread=120, r=50, dhsv=0.05):
         log.info("predecessors={}".format(  G.predecessors(s) ))
         if G.predecessors(s) > 0:
             createFan(G, s, spread=spread, r=r, dhsv=dhsv)
-
-
 
 
 def createFanPoints(n=1, x_0=0, y_0=0, a_0=0, spread=120, r=50):
@@ -124,6 +123,70 @@ def getRoot(G):
         raise IndexError("The graph has more than one  cycle!")
         return None
 
+
+def setRoot(G, root, size=50, radius=250):
+    """
+    This method assigns x,y, size and color to the root.
+    If a node has a previously defined attributed it is respected.
+    """
+    if len(root) == 1: #if steady state set as root in (0,0)
+        # Set position of root
+        G.node[root[0]]['x'] = 0
+        G.node[root[0]]['y'] = 0
+        G.node[root[0]]['angle'] = 0 
+        # Set color and size
+        if 'color' not in G.node[root[0]]: #if no defined color assign a random one
+            G.node[root[0]]['color'] = random()
+        if 'size' not in G.node[root[0]]: #if no defined size assign a default
+            G.node[root[0]]['size'] = size
+
+    else: # if cycle create fan
+        # Determine position of root
+        pos = createFanPoints(len(root), 0, 0, 0, 360, radius)
+        for n in zip(root, pos):
+            # Set position of root
+            log.info("node, x, y, angle={}".format(n))
+            G.node[n[0]]['x'] = n[1][0]
+            G.node[n[0]]['y'] = n[1][1]
+            G.node[n[0]]['angle'] = n[1][2] 
+            # Set color and size
+            if 'color' not in G.node[n[0]]: #if no defined color assign a random one
+                G.node[n[0]]['color'] = random()
+            if 'size' not in G.node[n[0]]: #if no defined size assign a default
+                G.node[n[0]]['size'] = size
+
+    return G
+
+
+def plotFanNetworkFromAttributes(G, filename=False):
+    """
+    Take a DiGraph, where position, size and color are node attributes and plot it with draw_networkx.
+
+    This code supposes no labels or attributes.
+    This code suposses the attributes are called: x, y, color, size.
+    """
+    # Convert node attributes to valid format
+    position = {}
+    color, size = [], []
+    for n in G:
+        position[n] = (G.node[n]['x'], G.node[n]['y'])
+        color.append(G.node[n]['color'])
+        size.append(G.node[n]['size'])
+    nx.draw_networkx_nodes(G, with_labels=False,
+         pos=position, node_size=size, node_color=color
+         )
+
+    #convert edge attributes to valid format
+    e_color = []
+    for e in G.edges():
+        e_color.append(G[e[0]][e[1]]['color'])
+    nx.draw_networkx_edges(G, arrows=False,
+         pos=position, edge_color=e_color
+         )
+    if filename: plt.savefig(filename)
+    else: plt.show()
+
+
 """
 MAIN
 Esto sera quitado algun dia.
@@ -143,43 +206,18 @@ for line in f:
     line = line.strip().split(',')
     G.add_edge(int(line[0]), int(line[1]))
 f.close()
-
 print len(G)
 
 # Determine root of tree
 root = getRoot(G)
+print root
 log.info("root={}".format(root))
+G = setRoot(G, root, root_size, fan_radius)
 
-# Determine position of root
-if len(root) == 1: #if steady state set as root in (0,0)
-    G.node[root[0]]['x'] = 0
-    G.node[root[0]]['y'] = 0
-    G.node[root[0]]['angle'] = 0 
-else: # if cycle create fan
-    pos = createFanPoints(len(root), 0, 0, 0, 360, fan_radius)
-    for n in zip(root, pos):
-        log.info("node, x, y, angle={}".format(n))
-        G.node[n[0]]['x'] = n[1][0]
-        G.node[n[0]]['y'] = n[1][1]
-        G.node[n[0]]['angle'] = n[1][2] 
-    # To avoid problems remove temporally edges between cycle
+# To avoid problems remove temporally edges between root cycle
+if len(root) > 1: 
     cycle_edges = G.subgraph(root).edges()
     G.remove_edges_from(cycle_edges)
-
-
-# Determine color and size of root
-for n in root:
-    try: G.node[n]['color']
-    except KeyError: #if no defined color assign a random one
-        G.node[n]['color'] = hsv_to_rgb(random(),1,1)
-    log.info("color={}".format( G.node[n]['color'] ))
-    try: G.node[n]['size']
-    except KeyError:
-        G.node[n]['size'] = root_size
-    log.info("size={}".format( G.node[n]['size'] ))
-
-
-
 
 # Traverse the graph by depth plotting fans
 for n in root:
@@ -190,47 +228,11 @@ for n in root:
         createFan(G, n, spread, fan_radius, dhsv=hue_gradient) 
 
 # Return deleted edges
-if root > 1:
-    G.add_edges_from(cycle_edges)
-    for e in cycle_edges:
-        G[e[0]][e[1]]['color'] = hsv_to_rgb(0,0,0)
+if len(root) > 1:
+    G.add_edges_from(cycle_edges, color=(0,0,0)) #colorear de paso
 
-        
-# Plot
-position = {}
-color, size = [], []
-for n in G:
-    position[n] = (G.node[n]['x'], G.node[n]['y'])
-    color.append(G.node[n]['color'])
-    size.append(G.node[n]['size'])
+plotFanNetworkFromAttributes(G)
 
-e_color = []
-for e in G.edges():
-    e_color.append(G[e[0]][e[1]]['color'])
+    
 
-
-nx.draw_networkx_nodes(G, with_labels=False,
-     pos=position, node_size=size, node_color=color
-     )
-nx.draw_networkx_edges(G, arrows=False,
-     pos=position, edge_color=e_color
-     )
-plt.show()
-
-
-
-
-
-# # set positions
-# G.position={}
-# G.position[0]=(1,1) #trampaaaa
-# # fancreateFanPoints(n=1, x_0=0, y_0=0, angle_0=0, spread=120, r=50):
-# pos = createFanPoints(len(attr), 1, 1, 0, 120, 100)
-
-# for n in zip(attr, pos):
-#     G.position[n[0]] = n[1]
-
-# H = G.subgraph( list(G.predecessors(0)) + [0] )
-# nx.draw_networkx(H, with_labels=False, pos=G.position, node_size=20)
-# plt.show()
 
