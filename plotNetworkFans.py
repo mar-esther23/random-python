@@ -6,14 +6,55 @@ from colorsys import rgb_to_hsv, hsv_to_rgb
 from random import random
 
 
-"""
-This code was designed to plot directed tree graphs as fans. 
 
-The graph should be a TREE except for the root, the nodes have only one succesor and many predescesors. Also, the graph should have only one ROOT, the root can be a single node or cycle.
+def plotNetworkFans(G, root_size=50, fan_radius=120, spread=120, hue_gradient=0.05, filename=False):
+    """
+    Plot a state transition graph (directed tree) with fans. 
 
-In particular it was designed for the state transitions graphs that are the result of synchronous directed boolean networks. This representation was inspired by Maximino Aldana's graphs.
-"""
+    The graph should be a TREE except for the root, the nodes have only one succesor and many predescesors. Also, the graph should have only one ROOT, the root can be a single node or cycle.
 
+    In particular it was designed for the state transitions graphs that are the result of synchronous directed boolean networks. This representation was inspired by Maximino Aldana's graphs.
+
+    If the color and size of the root nodes are previously defined as attributes it will respect them and use them as a basis for coloring.
+
+    Parameters
+    ----------
+    G:      nx Digraph to plot
+    root_size:   size of root nodes
+    fan_radius:  radius of fan
+    spread:      spread of fan
+    hue_gradient: change between fans color
+    filename:    file wheregraph will be plotted
+
+
+    Returns
+    -------
+    plots graph
+    """
+
+    # Determine root of tree
+    root = getRoot(G)
+    log.info("root={}".format(root))
+    G = setRoot(G, root, root_size, fan_radius)
+
+    # To avoid problems remove temporally edges between root cycle
+    if len(root) > 1: 
+        cycle_edges = G.subgraph(root).edges()
+        G.remove_edges_from(cycle_edges)
+
+    # Traverse the graph by depth plotting fans
+    for n in root:
+        log.info("n={}".format(n))
+        log.info("predecessors={}".format(  G.predecessors(n) ))
+        if G.predecessors(n) > 0: # Determine predecessors
+            #This method is recursive depth first!
+            createFan(G, n, spread, fan_radius, dhsv=hue_gradient) 
+
+    # Return deleted edges
+    if len(root) > 1:
+        G.add_edges_from(cycle_edges, color=(0,0,0)) # also color
+
+    plotFanNetworkFromAttributes(G, filename)
 
 
 
@@ -48,6 +89,7 @@ def createFan(G, n, spread=120, r=50, dhsv=0.05):
         G.node[s[0]]['y'] = s[1][1]
         G.node[s[0]]['angle'] = s[1][2] 
         # Set color and size
+        log.info("color={}".format(G.node[n]['color']))
         color = rgb_to_hsv(G.node[n]['color'][0], G.node[n]['color'][1], G.node[n]['color'][2])[0] + dhsv
         #hes just like his father (kinda)!
         G.node[s[0]]['color'] = hsv_to_rgb(color,1,1)
@@ -88,7 +130,8 @@ def createFanPoints(n=1, x_0=0, y_0=0, a_0=0, spread=120, r=50):
     pos = []
     log.info( "n={0}, spread={1}".format(n,spread))
     for i in range(n):
-        if spread == 360 or n==1: new_angle = a_0 + spread/float(n) * i - spread/2.0
+        if n==1: new_angle = a_0
+        elif spread == 360: new_angle = a_0 + spread/float(n) * i - spread/2.0
         else: new_angle = a_0 + spread/float(n-1) * i - spread/2.0
         log.info( "angle={}".format(new_angle) )
         x = r * cos(radians(new_angle)) + x_0
@@ -151,7 +194,7 @@ def setRoot(G, root, size=50, radius=250):
             G.node[n[0]]['angle'] = n[1][2] 
             # Set color and size
             if 'color' not in G.node[n[0]]: #if no defined color assign a random one
-                G.node[n[0]]['color'] = random()
+                G.node[n[0]]['color'] = hsv_to_rgb(random(),1,1)
             if 'size' not in G.node[n[0]]: #if no defined size assign a default
                 G.node[n[0]]['size'] = size
 
@@ -190,6 +233,8 @@ def plotFanNetworkFromAttributes(G, filename=False):
 """
 MAIN
 Esto sera quitado algun dia.
+
+Por lo pronto existe para importar grafica CC.
 """
 # log.basicConfig(level=log.DEBUG)
 
@@ -208,31 +253,19 @@ for line in f:
 f.close()
 print len(G)
 
-# Determine root of tree
-root = getRoot(G)
-print root
-log.info("root={}".format(root))
-G = setRoot(G, root, root_size, fan_radius)
+# # set default colors
+# G.node[2346]['color']=(0,1,0) #G1
+# G.node[10508]['color']=(0,1,0) #G1
+# G.node[8193]['color']=(1,0,0) #S
+# G.node[9345]['color']=(1,0,0) #S
+# G.node[10113]['color']=(1,0,0) #S
+# G.node[14273]['color']=(1,1,0) #G2
+# G.node[5887]['color']=(1,1,0) #G2
+# G.node[7165]['color']=(1,1,0) #G2
+# G.node[6589]['color']=(0,0,1) #M
+# G.node[6461]['color']=(0,0,1) #M
+# G.node[6462]['color']=(0,0,1) #M
 
-# To avoid problems remove temporally edges between root cycle
-if len(root) > 1: 
-    cycle_edges = G.subgraph(root).edges()
-    G.remove_edges_from(cycle_edges)
-
-# Traverse the graph by depth plotting fans
-for n in root:
-    log.info("n={}".format(n))
-    log.info("predecessors={}".format(  G.predecessors(n) ))
-    if G.predecessors(n) > 0: # Determine predecessors
-        #This method is recursive depth first!
-        createFan(G, n, spread, fan_radius, dhsv=hue_gradient) 
-
-# Return deleted edges
-if len(root) > 1:
-    G.add_edges_from(cycle_edges, color=(0,0,0)) #colorear de paso
-
-plotFanNetworkFromAttributes(G)
-
-    
+plotNetworkFans(G, root_size, fan_radius, spread, hue_gradient)
 
 
