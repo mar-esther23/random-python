@@ -78,24 +78,9 @@ def plotNetworkFans(G, root_size=20, fan_radius=200, spread=60, coloring='layer'
 def createFan(G, n, spread=60, r=200, 
     coloring='layer',color_gradient=0.05, color_random=0 ):
     """
-    Returns a fan given a base. The fan has possitions, color and size depending in parent. This method is recursive depth first!
+    Returns a fan given a base. 
 
-    Parameters
-    ----------
-    G:      nx Digraph to plot
-    n:   base node of fan
-    spread: total angle of fan
-    r:      radius of fan
-
-    coloring:    algorithm for coloring
-        'layer': the layer has the parent color + color_gradient + color_random,
-        'random': each fan has a random color
-    color_gradient: change between fans color
-    color_random:   random change between fans color
-
-    Returns
-    -------
-    Modifies the graph in place.
+    The fan has possitions, color and size depending in parent.  Modifies the graph in place. This method is recursive depth first!   
     """
 
     #Determine predeccesors
@@ -171,8 +156,9 @@ def createFanPoints(n=1, x_0=0, y_0=0, a_0=0, spread=60, r=200):
 
 def getRoot(G):
     """
-    Determine the root of the tree, return a list with the ordered node(s). The root can be a node or cycle. Remember that nodes have only one succesor.
+    Determine the root of the tree, return a list with the ordered node(s). 
 
+    The root can be a node or cycle. Remember that nodes have only one succesor.
     """
     # log.basicConfig(level=log.DEBUG)
     # search for steady state attractor
@@ -198,6 +184,7 @@ def getRoot(G):
 def setRoot(G, root, size=50, radius=200):
     """
     This method assigns x,y, size and color to the root.
+
     If a node has a previously defined attributed it is respected.
     """
     if len(root) == 1: #if steady state set as root in (0,0)
@@ -264,7 +251,6 @@ def plotFanNetworkFromAttributes(G, plot=True, cmap='hsv'):
          pos=position, edge_color=edge_color,
          )
 
-
     #remove axis
     plt.tick_params(
         axis='both', which='both',
@@ -276,48 +262,41 @@ def plotFanNetworkFromAttributes(G, plot=True, cmap='hsv'):
     else: plt.show()
 
 
-"""
-MAIN
-Esto sera quitado algun dia.
-
-Por lo pronto existe para importar grafica CC.
-"""
 # log.basicConfig(level=log.DEBUG)
 
-fan_radius = 750
-root_size = 150
-spread = 60
+# fan_radius = 750
+# root_size = 150
+# spread = 60
 
-color_gradient = 0.05
-color_random = 0.1
-coloring = 'layer'
-cmap = 'Accent'
+# color_gradient = 0.01
+# color_random = 0.0
+# coloring = 'layer'
+# cmap = 'hsv'
 
 
-# Open network
-G = nx.DiGraph()
-f = open('StrikingAtCC.csv')
-for line in f:
-    line = line.strip().split(',')
-    G.add_edge(int(line[0]), int(line[1]))
-f.close()
-print len(G)
+# # Open network
+# #Change this for a valid network
+# G = nx.DiGraph()
+# f = open('StrikingAtCC.csv')
+# for line in f:
+#     line = line.strip().split(',')
+#     G.add_edge(int(line[0]), int(line[1]))
+# f.close()
+# print len(G)
 
-# set default colors
-G.node[2346 ]['color'] = 0.33 #G1 g
-G.node[10508]['color'] = 0.33 #G1 g
-G.node[8193 ]['color'] = 0.00 #S  r
-G.node[9345 ]['color'] = 0.00 #S  r
-G.node[10113]['color'] = 0.00 #S  r
-G.node[14273]['color'] = 0.16 #G2 y
-G.node[5887 ]['color'] = 0.16 #G2 y
-G.node[7165 ]['color'] = 0.16 #G2 y 
-G.node[6589 ]['color'] = 0.66 #M  b
-G.node[6461 ]['color'] = 0.66 #M  b
-G.node[6462 ]['color'] = 0.66 #M  b
+# # set default colors
+# G.node[2346 ]['color'] = 0.33 #G1 g
+# G.node[10508]['color'] = 0.33 #G1 g
+# G.node[8193 ]['color'] = 0.00 #S  r
+# G.node[9345 ]['color'] = 0.00 #S  r
+# G.node[10113]['color'] = 0.00 #S  r
+# G.node[14273]['color'] = 0.16 #G2 y
+# G.node[5887 ]['color'] = 0.16 #G2 y
+# G.node[7165 ]['color'] = 0.16 #G2 y 
+# G.node[6589 ]['color'] = 0.66 #M  b
+# G.node[6461 ]['color'] = 0.66 #M  b
+# G.node[6462 ]['color'] = 0.66 #M  b
 
 # plotNetworkFans(G, root_size, fan_radius, spread, 
 #     coloring, color_gradient, color_random , cmap, plot=True)
-
-plotNetworkFans(G, plot=True)
 
