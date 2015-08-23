@@ -2,11 +2,12 @@ import logging as log
 import networkx as nx
 import matplotlib.pyplot as plt
 from matplotlib import cm
+from matplotlib.colors import Normalize
 from math import cos, sin, tan, degrees, radians
 from colorsys import rgb_to_hsv, hsv_to_rgb
 from random import random
 
-
+### TODO: method for replacing color for rgb according to cmap
 
 def plotNetworkFans(G, root_size=20, fan_radius=200, spread=60, coloring='layer', color_gradient=0.05, color_random=0 , cmap='hsv', plot=False):
     """
@@ -14,9 +15,9 @@ def plotNetworkFans(G, root_size=20, fan_radius=200, spread=60, coloring='layer'
 
     The graph should be a TREE except for the root, the nodes have only one succesor and many predescesors. Also, the graph should have only one ROOT, the root can be a single node or cycle.
 
-    In particular it was designed for the state transitions graphs that are the result of synchronous directed boolean networks. This representation was inspired by Maximino Aldana's graphs.
+    If the color and size of the root nodes are previously defined as attributes it will respect them and use them as a basis for coloring. The color most be a float, that will be evaluated according to cmap. The resulting network will have a color attribute as hsv.
 
-    If the color and size of the root nodes are previously defined as attributes it will respect them and use them as a basis for coloring.
+    In particular it was designed for the state transitions graphs that are the result of synchronous directed boolean networks. This representation was inspired by Maximino Aldana's graphs.
 
     Parameters
     ----------
@@ -32,7 +33,7 @@ def plotNetworkFans(G, root_size=20, fan_radius=200, spread=60, coloring='layer'
     color_gradient: change between fans color
     color_random:   random change between fans color
 
-    cmap:       
+    cmap:       cmap to color grap.
     plot:       if true plots graphs, 
                 if string saves in file plot
 
@@ -59,24 +60,27 @@ def plotNetworkFans(G, root_size=20, fan_radius=200, spread=60, coloring='layer'
         log.info("predecessors={}".format(  G.predecessors(n) ))
         if G.predecessors(n) > 0: # Determine predecessors
             #This method is recursive depth first!
+            #Determine position and color
             createFan(G, n, spread, fan_radius, 
                 coloring, color_gradient, color_random) 
+
+    # The previous method returns colors as floats that will be converted to rgb color using cmap
+    G = setColor(G, cmap)
 
     # Return deleted edges
     if len(root) > 1:
         #TODO check if black is a valid argument
         log.info("Return cycle edges")
-        G.add_edges_from(cycle_edges, color=0) # also color
+        G.add_edges_from(cycle_edges, color=(0,0,0)) # also color
 
     if plot==True or type(plot)==str:
-        plotFanNetworkFromAttributes(G, plot, cmap)
+        plotFanNetworkFromAttributes(G, plot)
 
     return G
 
 
-
 def createFan(G, n, spread=60, r=200, 
-    coloring='layer',color_gradient=0.05, color_random=0 ):
+    coloring='layer',color_gradient=0.05, color_random=0):
     """
     Returns a fan given a base. 
 
@@ -98,6 +102,7 @@ def createFan(G, n, spread=60, r=200,
         G.node[s[0]]['angle'] = s[1][2] 
 
         # Set color and size
+        # Note: the color here is a number that will be later transformed to rgb using cmap
         log.info("color={}".format(G.node[n]['color']))
         if coloring == 'layer': #take parent color and modify slightly
             color = G.node[n]['color'] + color_gradient + (random()-.5)*color_random
@@ -193,6 +198,7 @@ def setRoot(G, root, size=50, radius=200):
         G.node[root[0]]['y'] = 0
         G.node[root[0]]['angle'] = 0 
         # Set color and size
+        # Note: the color here is a number that will be later transformed to rgb using cmap
         if 'color' not in G.node[root[0]]: #if no defined color assign a random one
             G.node[root[0]]['color'] = random()
         if 'size' not in G.node[root[0]]: #if no defined size assign a default
@@ -216,7 +222,21 @@ def setRoot(G, root, size=50, radius=200):
     return G
 
 
-def plotFanNetworkFromAttributes(G, plot=True, cmap='hsv'):
+def setColor(G, cmap='hsv'):
+    """
+    Convert color floats to rgb color using cmap
+    """
+    norm = Normalize(0,1) #create norm to normalize
+    for n in G.nodes():
+        color = cm.ScalarMappable(norm, cmap).to_rgba(G.node[n]['color'])
+        G.node[n]['color'] = color[:3] #remove alpha
+    for s, t in G.edges():
+        color = cm.ScalarMappable(norm, cmap).to_rgba(G[s][t]['color'])
+        G[s][t]['color'] = color[:3] #remove alpha
+    return G
+
+
+def plotFanNetworkFromAttributes(G, plot=True):
     """
     Take a DiGraph, where position, size and color are node attributes and plot it with draw_networkx.
 
@@ -232,8 +252,6 @@ def plotFanNetworkFromAttributes(G, plot=True, cmap='hsv'):
         position[n] = (G.node[n]['x'], G.node[n]['y'])
         color.append(G.node[n]['color'])
         size.append(G.node[n]['size'])
-    #convert color from float to rgba
-    color = cm.ScalarMappable(cmap=cmap).to_rgba(color)
     log.info("Plot nodes.")
     nx.draw_networkx_nodes(G, with_labels=False, linewidths=0.10,
          pos=position, node_size=size, node_color=color, 
@@ -244,11 +262,9 @@ def plotFanNetworkFromAttributes(G, plot=True, cmap='hsv'):
     edge_color = []
     for e in G.edges():
         edge_color.append(G[e[0]][e[1]]['color'])
-    #convert color from float to rgba
-    edge_color = cm.ScalarMappable(cmap=cmap).to_rgba(edge_color)
     log.info("Plot edges")
     nx.draw_networkx_edges(G, arrows=False, alpha=0.5,
-         pos=position, edge_color=edge_color,
+         pos=position, edge_color=edge_color
          )
 
     #remove axis
@@ -262,14 +278,14 @@ def plotFanNetworkFromAttributes(G, plot=True, cmap='hsv'):
     else: plt.show()
 
 
-# log.basicConfig(level=log.DEBUG)
+# # log.basicConfig(level=log.DEBUG)
 
 # fan_radius = 750
 # root_size = 150
 # spread = 60
 
-# color_gradient = 0.01
-# color_random = 0.0
+# color_gradient = 0.025
+# color_random = 0.05
 # coloring = 'layer'
 # cmap = 'hsv'
 
