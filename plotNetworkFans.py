@@ -1,13 +1,14 @@
 import logging as log
 import networkx as nx
 import matplotlib.pyplot as plt
+from matplotlib import cm
 from math import cos, sin, tan, degrees, radians
 from colorsys import rgb_to_hsv, hsv_to_rgb
 from random import random
 
 
 
-def plotNetworkFans(G, root_size=50, fan_radius=120, spread=120, hue_gradient=0.05, filename=False):
+def plotNetworkFans(G, root_size=20, fan_radius=200, spread=60, coloring='layer', color_gradient=0.05, color_random=0 , cmap='hsv', plot=False):
     """
     Plot a state transition graph (directed tree) with fans. 
 
@@ -20,16 +21,25 @@ def plotNetworkFans(G, root_size=50, fan_radius=120, spread=120, hue_gradient=0.
     Parameters
     ----------
     G:      nx Digraph to plot
-    root_size:   size of root nodes
-    fan_radius:  radius of fan
-    spread:      spread of fan
-    hue_gradient: change between fans color
-    filename:    file wheregraph will be plotted
+    root_size:  size of root nodes
+    fan_radius: radius of fan
+    spread:     spread of fan
+
+    coloring:   algorithm for coloring
+        'layer':  the layer has the similar color
+                  parent color + color_gradient + color_random,
+        'random': each fan has a random color
+    color_gradient: change between fans color
+    color_random:   random change between fans color
+
+    cmap:       
+    plot:       if true plots graphs, 
+                if string saves in file plot
 
 
     Returns
     -------
-    plots graph
+    G:      nx DiGraph with x, y, size and color attributes.
     """
 
     # Determine root of tree
@@ -39,6 +49,7 @@ def plotNetworkFans(G, root_size=50, fan_radius=120, spread=120, hue_gradient=0.
 
     # To avoid problems remove temporally edges between root cycle
     if len(root) > 1: 
+        log.info("Remove cycle edges")
         cycle_edges = G.subgraph(root).edges()
         G.remove_edges_from(cycle_edges)
 
@@ -48,19 +59,26 @@ def plotNetworkFans(G, root_size=50, fan_radius=120, spread=120, hue_gradient=0.
         log.info("predecessors={}".format(  G.predecessors(n) ))
         if G.predecessors(n) > 0: # Determine predecessors
             #This method is recursive depth first!
-            createFan(G, n, spread, fan_radius, dhsv=hue_gradient) 
+            createFan(G, n, spread, fan_radius, 
+                coloring, color_gradient, color_random) 
 
     # Return deleted edges
     if len(root) > 1:
-        G.add_edges_from(cycle_edges, color=(0,0,0)) # also color
+        #TODO check if black is a valid argument
+        log.info("Return cycle edges")
+        G.add_edges_from(cycle_edges, color=0) # also color
 
-    plotFanNetworkFromAttributes(G, filename)
+    if plot==True or type(plot)==str:
+        plotFanNetworkFromAttributes(G, plot, cmap)
+
+    return G
 
 
 
-def createFan(G, n, spread=120, r=50, dhsv=0.05):
+def createFan(G, n, spread=60, r=200, 
+    coloring='layer',color_gradient=0.05, color_random=0 ):
     """
-    Returns a fan given a base. The fan has possitions, color ans size depending in parent. This method is recursive depth first!
+    Returns a fan given a base. The fan has possitions, color and size depending in parent. This method is recursive depth first!
 
     Parameters
     ----------
@@ -68,7 +86,12 @@ def createFan(G, n, spread=120, r=50, dhsv=0.05):
     n:   base node of fan
     spread: total angle of fan
     r:      radius of fan
-    dhsv:   hsv gradient
+
+    coloring:    algorithm for coloring
+        'layer': the layer has the parent color + color_gradient + color_random,
+        'random': each fan has a random color
+    color_gradient: change between fans color
+    color_random:   random change between fans color
 
     Returns
     -------
@@ -88,13 +111,17 @@ def createFan(G, n, spread=120, r=50, dhsv=0.05):
         G.node[s[0]]['x'] = s[1][0]
         G.node[s[0]]['y'] = s[1][1]
         G.node[s[0]]['angle'] = s[1][2] 
+
         # Set color and size
         log.info("color={}".format(G.node[n]['color']))
-        color = rgb_to_hsv(G.node[n]['color'][0], G.node[n]['color'][1], G.node[n]['color'][2])[0] + dhsv
-        #hes just like his father (kinda)!
-        G.node[s[0]]['color'] = hsv_to_rgb(color,1,1)
+        if coloring == 'layer': #take parent color and modify slightly
+            color = G.node[n]['color'] + color_gradient + (random()-.5)*color_random
+        if coloring == 'random':
+            color = random()
+        G.node[s[0]]['color'] = color
         log.info("color={}".format( G.node[s[0]]['color'] ))
-        G.node[s[0]]['size'] = 1 #small is pretty, we'll color edges later
+
+        G.node[s[0]]['size'] = 2 #small is pretty
         log.info("size={}".format( G.node[s[0]]['size'] ))
 
     # Set edges to father's color
@@ -106,10 +133,11 @@ def createFan(G, n, spread=120, r=50, dhsv=0.05):
         log.info("n_s={}".format(s))
         log.info("predecessors={}".format(  G.predecessors(s) ))
         if G.predecessors(s) > 0:
-            createFan(G, s, spread=spread, r=r, dhsv=dhsv)
+            createFan(G, s, spread, fan_radius, 
+                coloring, color_gradient, color_random) 
 
 
-def createFanPoints(n=1, x_0=0, y_0=0, a_0=0, spread=120, r=50):
+def createFanPoints(n=1, x_0=0, y_0=0, a_0=0, spread=60, r=200):
     """
     Returns the positions and angle (x,y,a) of a fan of nodes with a given base.
 
@@ -167,7 +195,7 @@ def getRoot(G):
         return None
 
 
-def setRoot(G, root, size=50, radius=250):
+def setRoot(G, root, size=50, radius=200):
     """
     This method assigns x,y, size and color to the root.
     If a node has a previously defined attributed it is respected.
@@ -194,39 +222,57 @@ def setRoot(G, root, size=50, radius=250):
             G.node[n[0]]['angle'] = n[1][2] 
             # Set color and size
             if 'color' not in G.node[n[0]]: #if no defined color assign a random one
-                G.node[n[0]]['color'] = hsv_to_rgb(random(),1,1)
+                G.node[n[0]]['color'] = random()
             if 'size' not in G.node[n[0]]: #if no defined size assign a default
                 G.node[n[0]]['size'] = size
 
     return G
 
 
-def plotFanNetworkFromAttributes(G, filename=False):
+def plotFanNetworkFromAttributes(G, plot=True, cmap='hsv'):
     """
     Take a DiGraph, where position, size and color are node attributes and plot it with draw_networkx.
 
     This code supposes no labels or attributes.
     This code suposses the attributes are called: x, y, color, size.
     """
+
     # Convert node attributes to valid format
+    log.info("Create node attributes for plotting")
     position = {}
     color, size = [], []
     for n in G:
         position[n] = (G.node[n]['x'], G.node[n]['y'])
         color.append(G.node[n]['color'])
         size.append(G.node[n]['size'])
-    nx.draw_networkx_nodes(G, with_labels=False,
-         pos=position, node_size=size, node_color=color
+    #convert color from float to rgba
+    color = cm.ScalarMappable(cmap=cmap).to_rgba(color)
+    log.info("Plot nodes.")
+    nx.draw_networkx_nodes(G, with_labels=False, linewidths=0.10,
+         pos=position, node_size=size, node_color=color, 
          )
 
     #convert edge attributes to valid format
-    e_color = []
+    log.info("Create edge attributes for plotting")
+    edge_color = []
     for e in G.edges():
-        e_color.append(G[e[0]][e[1]]['color'])
-    nx.draw_networkx_edges(G, arrows=False,
-         pos=position, edge_color=e_color
+        edge_color.append(G[e[0]][e[1]]['color'])
+    #convert color from float to rgba
+    edge_color = cm.ScalarMappable(cmap=cmap).to_rgba(edge_color)
+    log.info("Plot edges")
+    nx.draw_networkx_edges(G, arrows=False, alpha=0.5,
+         pos=position, edge_color=edge_color,
          )
-    if filename: plt.savefig(filename)
+
+
+    #remove axis
+    plt.tick_params(
+        axis='both', which='both',
+        bottom='off', top='off', left='off', right='off',
+        labelbottom='off', labelleft='off'
+        )
+
+    if type(plot)==str: plt.savefig(plot)
     else: plt.show()
 
 
@@ -239,9 +285,13 @@ Por lo pronto existe para importar grafica CC.
 # log.basicConfig(level=log.DEBUG)
 
 fan_radius = 750
-hue_gradient = 0.05
 root_size = 150
 spread = 60
+
+color_gradient = 0.05
+color_random = 0.1
+coloring = 'layer'
+cmap = 'Accent'
 
 
 # Open network
@@ -253,19 +303,21 @@ for line in f:
 f.close()
 print len(G)
 
-# # set default colors
-# G.node[2346]['color']=(0,1,0) #G1
-# G.node[10508]['color']=(0,1,0) #G1
-# G.node[8193]['color']=(1,0,0) #S
-# G.node[9345]['color']=(1,0,0) #S
-# G.node[10113]['color']=(1,0,0) #S
-# G.node[14273]['color']=(1,1,0) #G2
-# G.node[5887]['color']=(1,1,0) #G2
-# G.node[7165]['color']=(1,1,0) #G2
-# G.node[6589]['color']=(0,0,1) #M
-# G.node[6461]['color']=(0,0,1) #M
-# G.node[6462]['color']=(0,0,1) #M
+# set default colors
+G.node[2346 ]['color'] = 0.33 #G1 g
+G.node[10508]['color'] = 0.33 #G1 g
+G.node[8193 ]['color'] = 0.00 #S  r
+G.node[9345 ]['color'] = 0.00 #S  r
+G.node[10113]['color'] = 0.00 #S  r
+G.node[14273]['color'] = 0.16 #G2 y
+G.node[5887 ]['color'] = 0.16 #G2 y
+G.node[7165 ]['color'] = 0.16 #G2 y 
+G.node[6589 ]['color'] = 0.66 #M  b
+G.node[6461 ]['color'] = 0.66 #M  b
+G.node[6462 ]['color'] = 0.66 #M  b
 
-plotNetworkFans(G, root_size, fan_radius, spread, hue_gradient)
+# plotNetworkFans(G, root_size, fan_radius, spread, 
+#     coloring, color_gradient, color_random , cmap, plot=True)
 
+plotNetworkFans(G, plot=True)
 
