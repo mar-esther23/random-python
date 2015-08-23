@@ -7,11 +7,12 @@ def write_gmlForPlotting(G, path,
     e_fill='fill', e_width='width'
     ):
     """
-    Exports G into a gml file plottable with yEd.
+    Exports G into a plotable gml file.
 
-    What this method does is take the graphics arguments defined as attributes and ordered them so that write_gml() can export them correctly.
+    Take the graphics arguments defined as attributes of the node/edge and ordered them so that write_gml() can export them correctly as graphics arguments.
     Attributes x, y, w, h, width should be integers
     Fill uses colorConverter.to_rgb(), see the documentation for examples of valid colors.
+    Proved with yEd.
 
 
     Parameters
@@ -38,7 +39,7 @@ def write_gmlForPlotting(G, path,
 
     # save node attributes in graphics attribute
     for n in G.nodes():
-        G.node[n]['graphics'] = {}
+        if 'graphics' not in G.node[n]: G.node[n]['graphics'] = {}
         if x in G.node[n]: G.node[n]['graphics']['x'] = G.node[n][x]
         if y in G.node[n]: G.node[n]['graphics']['y'] = G.node[n][y]
         if w in G.node[n]: G.node[n]['graphics']['w'] = G.node[n][w]
@@ -61,7 +62,7 @@ def write_gmlForPlotting(G, path,
 
     # save edge attributes in graphics attribute
     for s,t in G.edges():
-        G[s][t]['graphics'] = {}
+        if 'graphics' not in G[s][t]: G.node[s][t]['graphics'] = {}
         if e_width in G[s][t]: G[s][t]['graphics']['width'] = G[s][t][e_width]
         if e_fill in G[s][t]: 
             #convert fill to valid hex
