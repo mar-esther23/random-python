@@ -1,8 +1,0 @@
-Content-Type: text/x-zim-wiki
-Wiki-Format: zim 0.4
-Creation-Date: 2013-10-22T20:47:40-05:00
-
-====== BooleanNet ======
-Created Tuesday 22 October 2013
-
-http://atlas.bx.psu.edu/booleannet/booleannet.html#Installation
