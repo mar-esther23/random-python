@@ -1,0 +1,27 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2015-10-01T19:31:55-05:00
+
+====== Profiler ======
+
+http://stackoverflow.com/questions/582336/how-can-you-profile-a-python-script
+https://docs.python.org/2/library/profile.html#instant-user-s-manual
+
+===== cProfile =====
+Python includes a profiler called cProfile. It not only gives the total running time, but also times each function separately, and tells you how many times each function was called. The profiler only works (by default) on the main thread.
+
+Call it from within your code, or from the interpreter:
+	'''
+	import cProfile
+	cProfile.run('foo()')
+	'''
+
+Invoke the cProfile when running a script:
+	''python -m cProfile myscript.py''
+
+
+
+===== pycallgraph =====
+Generates a visualisation from your Python code
+After a ''pip install pycallgraph'', you can run it from the command line:
+	''pycallgraph graphviz -- ./mypythonscript.py''
